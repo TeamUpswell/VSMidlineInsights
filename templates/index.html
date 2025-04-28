@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HPV Vaccination Chatbot</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+      body {
+        padding: 20px;
+        background-color: #f8f9fa;
+      }
+      .chat-container {
+        height: 400px;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        padding: 15px;
+        border-radius: 5px;
+        background-color: white;
+        margin-bottom: 15px;
+      }
+      .user-message {
+        background-color: #e9f5ff;
+        padding: 10px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        max-width: 80%;
+        margin-left: auto;
+        text-align: right;
+      }
+      .bot-message {
+        background-color: #f0f0f0;
+        padding: 10px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        max-width: 80%;
+      }
+      .visualization {
+        margin: 15px 0;
+        text-align: center;
+      }
+      .visualization img {
+        max-width: 100%;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+      }
+      /* Add to your existing CSS */
+      .bot-message .message-content,
+      .user-message .message-content {
+        line-height: 1.5;
+      }
+
+      .bot-message .message-content p {
+        margin-bottom: 0.75rem;
+      }
+
+      .bot-message .message-content p:last-child {
+        margin-bottom: 0;
+      }
+
+      .bot-message .message-content ul {
+        margin-top: 0.5rem;
+        margin-bottom: 0.75rem;
+        padding-left: 1.5rem;
+      }
+
+      .bot-message .message-content li {
+        margin-bottom: 0.25rem;
+      }
+
+      .bot-message .message-content strong {
+        font-weight: 600;
+      }
+
+      /* Improve spacing between sections */
+      .bot-message .message-content h5,
+      .bot-message .message-content h6 {
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+      }
+
+      /* Style quotes */
+      .bot-message .message-content blockquote {
+        border-left: 3px solid #6c757d;
+        padding-left: 0.75rem;
+        color: #6c757d;
+        font-style: italic;
+        margin-left: 0.5rem;
+        margin-right: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1 class="mb-4 text-center">
+        HPV Vaccination Behavioral Factors Chatbot
+      </h1>
+
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header">
+              <h5>Upload Data</h5>
+            </div>
+            <div class="card-body">
+              <form id="upload-form" enctype="multipart/form-data">
+                <div class="mb-3">
+                  <label for="dataFile" class="form-label"
+                    >Choose CSV or Excel file with HPV survey data</label
+                  >
+                  <input
+                    class="form-control"
+                    type="file"
+                    id="dataFile"
+                    accept=".csv,.xlsx,.xls"
+                  />
+                </div>
+                <button type="submit" class="btn btn-primary">
+                  Upload and Process
+                </button>
+              </form>
+              <div id="upload-status" class="mt-3"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header">
+              <h5>Model Training</h5>
+            </div>
+            <div class="card-body">
+              <p>
+                Train a predictive model on the uploaded data to analyze factors
+                affecting HPV vaccination.
+              </p>
+              <button id="train-model" class="btn btn-success" disabled>
+                Train Model
+              </button>
+              <div id="training-status" class="mt-3"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-4" id="data-controls" style="display: none">
+        <div class="card-header">
+          <h5 class="card-title mb-0">Data Management</h5>
+        </div>
+        <div class="card-body">
+          <form id="upload-form" enctype="multipart/form-data">
+            <div class="mb-3">
+              <label for="data-file" class="form-label"
+                >Upload HPV vaccination data (CSV)</label
+              >
+              <input
+                type="file"
+                class="form-control"
+                id="data-file"
+                accept=".csv"
+                required
+              />
+            </div>
+            <button type="submit" class="btn btn-primary">Upload Data</button>
+          </form>
+          <div class="mt-3" id="upload-status"></div>
+          <div class="mt-3">
+            <button id="train-model" class="btn btn-success" disabled>
+              Train Model
+            </button>
+            <span id="training-status" class="ms-2"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-info" id="auto-data-status" style="display: none">
+        <strong>System Status:</strong>
+        <span id="auto-data-message">Initializing with default data...</span>
+      </div>
+
+      <div class="card mb-4">
+        <div class="card-header">
+          <ul
+            class="nav nav-tabs card-header-tabs"
+            id="chatbot-tabs"
+            role="tablist"
+          >
+            <li class="nav-item">
+              <a
+                class="nav-link active"
+                id="chat-tab"
+                data-bs-toggle="tab"
+                href="#chat-panel"
+                role="tab"
+                aria-controls="chat-panel"
+                aria-selected="true"
+                >Chat</a
+              >
+            </li>
+            <li class="nav-item">
+              <a
+                class="nav-link"
+                id="survey-tab"
+                data-bs-toggle="tab"
+                href="#survey-panel"
+                role="tab"
+                aria-controls="survey-panel"
+                aria-selected="false"
+                >Original Survey</a
+              >
+            </li>
+            <li class="nav-item">
+              <a
+                class="nav-link"
+                id="literature-tab"
+                data-bs-toggle="tab"
+                href="#literature-panel"
+                role="tab"
+                aria-controls="literature-panel"
+                aria-selected="false"
+                >Research Literature</a
+              >
+            </li>
+          </ul>
+        </div>
+        <div class="card-body">
+          <div class="tab-content" id="chatbot-tab-content">
+            <!-- Chat Panel -->
+            <div
+              class="tab-pane fade show active"
+              id="chat-panel"
+              role="tabpanel"
+              aria-labelledby="chat-tab"
+            >
+              <div id="chat-container" class="chat-container"></div>
+              <form id="chat-form" class="mt-3">
+                <div class="input-group">
+                  <input
+                    type="text"
+                    id="user-input"
+                    class="form-control"
+                    placeholder="Ask a question about HPV vaccination factors..."
+                  />
+                  <button type="submit" class="btn btn-primary">Send</button>
+                </div>
+              </form>
+              <div class="mt-2">
+                <small class="text-muted"
+                  >Example questions: "How does education affect HPV vaccination
+                  rates?", "What is the relationship between exposure to
+                  messaging and vaccination?", "What regional differences exist
+                  in vaccination rates?"</small
+                >
+              </div>
+            </div>
+
+            <!-- Survey Panel -->
+            <div
+              class="tab-pane fade"
+              id="survey-panel"
+              role="tabpanel"
+              aria-labelledby="survey-tab"
+            >
+              <h5>Original Survey Questions</h5>
+              <p class="text-muted">
+                The dataset was collected using the following survey questions
+                administered to Nigerian caregivers.
+              </p>
+
+              <div id="survey-questions-container">
+                <div class="d-flex justify-content-center">
+                  <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Literature Panel -->
+            <div
+              class="tab-pane fade"
+              id="literature-panel"
+              role="tabpanel"
+              aria-labelledby="literature-tab"
+            >
+              <h5>Research Literature on HPV Vaccination in Nigeria</h5>
+              <p class="text-muted">
+                Key papers and findings that inform our understanding of HPV
+                vaccination factors.
+              </p>
+
+              <div id="literature-container">
+                <div class="d-flex justify-content-center">
+                  <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      $(document).ready(function () {
+        // Send a welcome message with good formatting
+        const welcomeMessage = `Welcome to the HPV Vaccination Chatbot!
+
+I can help answer questions about HPV vaccination in Nigeria based on survey data and research literature.
+
+You can ask me about:
+
+• Education effects on vaccination rates
+• Impact of exposure to vaccine messaging
+• Motivation factors affecting vaccination
+• Ability factors like knowing where to get vaccines
+• Regional differences in vaccination rates
+• Barriers to vaccination
+• Strategies to improve vaccination rates
+
+What would you like to know about HPV vaccination?`;
+
+        // Add the welcome message
+        addBotMessage(welcomeMessage);
+
+        // Handle data upload
+        $("#upload-form").submit(function (e) {
+          e.preventDefault();
+
+          const fileInput = document.getElementById("dataFile");
+          const file = fileInput.files[0];
+
+          if (!file) {
+            $("#upload-status").html(
+              '<div class="alert alert-danger">Please select a file</div>'
+            );
+            return;
+          }
+
+          const formData = new FormData();
+          formData.append("file", file);
+
+          $("#upload-status").html(
+            '<div class="alert alert-info">Uploading and processing data...</div>'
+          );
+
+          $.ajax({
+            url: "/load_data",
+            type: "POST",
+            data: formData,
+            contentType: false,
+            processData: false,
+            success: function (response) {
+              if (response.success) {
+                $("#upload-status").html(
+                  `<div class="alert alert-success">${response.success}</div>`
+                );
+                $("#train-model").prop("disabled", false);
+                addBotMessage(
+                  "Data loaded successfully! You can now ask questions about the HPV vaccination data or train a predictive model."
+                );
+              } else {
+                $("#upload-status").html(
+                  `<div class="alert alert-danger">${response.error}</div>`
+                );
+              }
+            },
+            error: function (xhr) {
+              $("#upload-status").html(
+                '<div class="alert alert-danger">Error uploading file</div>'
+              );
+            },
+          });
+        });
+
+        // Handle model training
+        $("#train-model").click(function () {
+          $("#training-status").html(
+            '<div class="alert alert-info">Training model...</div>'
+          );
+
+          $.ajax({
+            url: "/train_model",
+            type: "POST",
+            success: function (response) {
+              if (response.success) {
+                $("#training-status").html(
+                  `<div class="alert alert-success">${response.success}</div>`
+                );
+                addBotMessage(
+                  "Model trained successfully! You can now ask more detailed questions about factors affecting HPV vaccination rates."
+                );
+              } else {
+                $("#training-status").html(
+                  `<div class="alert alert-danger">${response.error}</div>`
+                );
+              }
+            },
+            error: function (xhr) {
+              $("#training-status").html(
+                '<div class="alert alert-danger">Error training model</div>'
+              );
+            },
+          });
+        });
+
+        // Handle chat form submission
+        $("#chat-form").submit(function (e) {
+          e.preventDefault();
+
+          const userQuery = $("#user-input").val().trim();
+
+          if (userQuery === "") {
+            return;
+          }
+
+          // Add user message to chat
+          addUserMessage(userQuery);
+
+          // Clear input
+          $("#user-input").val("");
+
+          // Add temporary "thinking" message
+          const tempId = "temp-message";
+          $("#chat-container").append(
+            `<div id="${tempId}" class="bot-message">Thinking...</div>`
+          );
+          $("#chat-container").scrollTop($("#chat-container")[0].scrollHeight);
+
+          // Send query to server
+          $.ajax({
+            url: "/ask",
+            type: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({ query: userQuery }),
+            success: function (response) {
+              // Remove temporary message
+              $(`#${tempId}`).remove();
+
+              if (response.error) {
+                addBotMessage(`Error: ${response.error}`);
+              } else {
+                // Add bot response
+                addBotMessage(response.answer);
+              }
+            },
+            error: function (xhr) {
+              $(`#${tempId}`).remove();
+              addBotMessage(
+                "Sorry, I encountered an error processing your question."
+              );
+            },
+          });
+        });
+
+        // Function to add user message to chat
+        function addUserMessage(message) {
+          const messageHtml = `
+                    <div class="user-message">
+                        <div class="message-content">${message}</div>
+                    </div>
+                `;
+          $("#chat-container").append(messageHtml);
+          $("#chat-container").scrollTop($("#chat-container")[0].scrollHeight);
+        }
+
+        // Function to add bot message to chat
+        function addBotMessage(message) {
+          const formattedMessage = formatChatText(message);
+          const messageHtml = `
+                    <div class="bot-message">
+                        <div class="message-content">${formattedMessage}</div>
+                    </div>
+                `;
+          $("#chat-container").append(messageHtml);
+          $("#chat-container").scrollTop($("#chat-container")[0].scrollHeight);
+        }
+
+        // Show auto-data status
+        $("#auto-data-status").show();
+
+        // Add a check for data loading status
+        checkDataStatus();
+      });
+
+      // Update this function
+      function checkDataStatus(attempts = 0) {
+        // Max attempts to avoid endless polling
+        const MAX_ATTEMPTS = 10;
+
+        if (attempts >= MAX_ATTEMPTS) {
+          $("#auto-data-message").text(
+            "Data initialization timed out. You may need to upload data manually."
+          );
+          $("#auto-data-status")
+            .removeClass("alert-info")
+            .addClass("alert-warning");
+          $("#data-controls").show();
+          return;
+        }
+
+        $.ajax({
+          url: "/check_data_status",
+          type: "GET",
+          success: function (response) {
+            if (response.loaded) {
+              $("#auto-data-message")
+                .html(`Data loaded successfully with <strong>${
+                response.data_size
+              }</strong> records. 
+                                                     ${
+                                                       response.model_trained
+                                                         ? "Model also trained."
+                                                         : ""
+                                                     } Ready for queries!`);
+              $("#auto-data-status")
+                .removeClass("alert-info")
+                .addClass("alert-success");
+
+              // Hide the data upload UI since we don't need it
+              $(".row.mb-4").first().hide();
+
+              // Hide the status after 5 seconds
+              setTimeout(function () {
+                $("#auto-data-status").fadeOut();
+              }, 5000);
+
+              // Additional message in chat
+              addBotMessage(
+                "I've loaded a dataset with information about HPV vaccination in Nigeria. You can ask me questions about factors affecting vaccination rates now!"
+              );
+            } else {
+              $("#auto-data-message").text(
+                `Waiting for data initialization... (attempt ${
+                  attempts + 1
+                }/${MAX_ATTEMPTS})`
+              );
+              // Check again in 2 seconds
+              setTimeout(function () {
+                checkDataStatus(attempts + 1);
+              }, 2000);
+            }
+          },
+          error: function () {
+            $("#auto-data-message").text(
+              "Error checking data status. You may need to upload data manually."
+            );
+            $("#auto-data-status")
+              .removeClass("alert-info")
+              .addClass("alert-warning");
+
+            // Show manual controls if auto-loading failed
+            $("#data-controls").show();
+          },
+        });
+      }
+
+      // Load survey information when survey tab is clicked
+      $("#survey-tab").on("click", function () {
+        if ($("#survey-questions-container table").length === 0) {
+          // Only load if not already loaded
+          $.ajax({
+            url: "/survey_info",
+            type: "GET",
+            success: function (response) {
+              let html = '<table class="table table-striped">';
+              html +=
+                "<thead><tr><th>Column</th><th>Survey Question</th></tr></thead><tbody>";
+
+              // Add each question
+              for (const [column, question] of Object.entries(
+                response.survey_questions
+              )) {
+                html += `<tr><td>${column}</td><td>${question}</td></tr>`;
+              }
+
+              html += "</tbody></table>";
+
+              // Add COM-B framework section
+              html += '<h5 class="mt-4">COM-B Framework Mapping</h5>';
+              html +=
+                "<p>The survey questions map to the COM-B behavior change framework as follows:</p>";
+
+              html += '<div class="accordion" id="combAccordion">';
+
+              for (const [component, data] of Object.entries(
+                response.comb_framework
+              )) {
+                const headingId = `heading${component}`;
+                const collapseId = `collapse${component}`;
+
+                html += `
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="${headingId}">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                                data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}">
+                                            ${component}: ${data.description}
+                                        </button>
+                                    </h2>
+                                    <div id="${collapseId}" class="accordion-collapse collapse" aria-labelledby="${headingId}" data-bs-parent="#combAccordion">
+                                        <div class="accordion-body">
+                                            <ul>`;
+
+                // Add each column in this component
+                data.columns.forEach((column) => {
+                  const question = response.survey_questions[column] || column;
+                  html += `<li><strong>${column}</strong>: ${question}</li>`;
+                });
+
+                html += `
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>`;
+              }
+
+              html += "</div>";
+
+              $("#survey-questions-container").html(html);
+            },
+            error: function (xhr, status, error) {
+              console.error(
+                "Survey info error:",
+                status,
+                error,
+                xhr.responseText
+              );
+              $("#survey-questions-container").html(
+                `<div class="alert alert-danger">
+                                <p>Failed to load survey information</p>
+                                <p>Error: ${error}</p>
+                                <p>Status: ${status}</p>
+                                <p>Response: ${
+                                  xhr.responseText || "No response text"
+                                }</p>
+                             </div>`
+              );
+            },
+          });
+        }
+      });
+
+      // Load literature information when literature tab is clicked
+      $("#literature-tab").on("click", function () {
+        if ($("#literature-container .card").length === 0) {
+          // Only load if not already loaded
+          $.ajax({
+            url: "/literature",
+            type: "GET",
+            success: function (response) {
+              let html = '<div class="row">';
+
+              // Create cards for each literature source
+              response.sources.forEach((source) => {
+                html += `
+                            <div class="col-12 mb-4">
+                                <div class="card">
+                                    <div class="card-header bg-primary text-white">
+                                        <h5 class="card-title mb-0">${source.title}</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <h6 class="card-subtitle mb-2 text-muted">${source.authors} (${source.year})</h6>
+                                        <p class="card-text"><strong>Key Findings:</strong></p>
+                                        <ul>`;
+
+                // Add key findings as list items
+                source.key_findings.forEach((finding) => {
+                  html += `<li>${finding}</li>`;
+                });
+
+                html += `
+                                        </ul>
+                                        <div class="mt-3">
+                                            <p><strong>Citation:</strong></p>
+                                            <p class="text-muted">${source.citation}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>`;
+              });
+
+              html += "</div>";
+
+              // Add recommendations section
+              html += `
+                        <div class="mt-4 mb-4">
+                            <div class="card">
+                                <div class="card-header bg-success text-white">
+                                    <h5 class="card-title mb-0">Recommended Strategies for Improving HPV Vaccination</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">`;
+
+              // Create two columns of recommendations
+              const halfIndex = Math.ceil(response.recommendations.length / 2);
+
+              html += '<div class="col-md-6"><ul>';
+              response.recommendations.slice(0, halfIndex).forEach((rec) => {
+                html += `<li>${rec}</li>`;
+              });
+              html += "</ul></div>";
+
+              html += '<div class="col-md-6"><ul>';
+              response.recommendations.slice(halfIndex).forEach((rec) => {
+                html += `<li>${rec}</li>`;
+              });
+              html += "</ul></div>";
+
+              html += `
+                                    </div>
+                                </div>
+                            </div>
+                        </div>`;
+
+              // Add topic insights from literature
+              html += '<h5 class="mt-4">Key Insights by Topic</h5>';
+
+              // Create accordion for topics
+              html +=
+                '<div class="accordion mt-3 mb-4" id="literatureAccordion">';
+
+              // Define topic display names and colors
+              const topicDetails = {
+                education: { name: "Education Factors", color: "primary" },
+                barriers: { name: "Barriers to Vaccination", color: "danger" },
+                strategies: {
+                  name: "Intervention Strategies",
+                  color: "success",
+                },
+                regional: { name: "Regional Differences", color: "info" },
+                exposure: { name: "Information Exposure", color: "warning" },
+                motivation: { name: "Motivation Factors", color: "secondary" },
+                ability: { name: "Ability & Access Factors", color: "dark" },
+              };
+
+              for (const [topic, insights] of Object.entries(
+                response.insights
+              )) {
+                const headingId = `literatureHeading${topic}`;
+                const collapseId = `literatureCollapse${topic}`;
+
+                // Get topic details or use defaults
+                const details = topicDetails[topic] || {
+                  name: topic.charAt(0).toUpperCase() + topic.slice(1),
+                  color: "primary",
+                };
+
+                html += `
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="${headingId}">
+                                    <button class="accordion-button collapsed bg-${details.color} bg-opacity-10" type="button" 
+                                            data-bs-toggle="collapse" data-bs-target="#${collapseId}" 
+                                            aria-expanded="false" aria-controls="${collapseId}">
+                                        <strong>${details.name}</strong>
+                                    </button>
+                                </h2>
+                                <div id="${collapseId}" class="accordion-collapse collapse" 
+                                     aria-labelledby="${headingId}" data-bs-parent="#literatureAccordion">
+                                    <div class="accordion-body">`;
+
+                // Add quote if available
+                if (response.quotes && response.quotes[topic]) {
+                  html += `
+                                    <div class="card mb-3 border-${details.color}">
+                                        <div class="card-body">
+                                            <blockquote class="blockquote mb-0">
+                                                <p class="font-italic">"${response.quotes[topic]}"</p>
+                                            </blockquote>
+                                        </div>
+                                    </div>`;
+                }
+
+                // Add insights list
+                html += "<ul>";
+                insights.forEach((insight) => {
+                  html += `<li>${insight}</li>`;
+                });
+                html += "</ul>";
+
+                html += `
+                                    </div>
+                                </div>
+                            </div>`;
+              }
+
+              html += "</div>";
+
+              $("#literature-container").html(html);
+
+              // Initialize Bootstrap components
+              if (typeof bootstrap !== "undefined") {
+                var tooltipTriggerList = [].slice.call(
+                  document.querySelectorAll('[data-bs-toggle="tooltip"]')
+                );
+                tooltipTriggerList.map(function (tooltipTriggerEl) {
+                  return new bootstrap.Tooltip(tooltipTriggerEl);
+                });
+              }
+            },
+            error: function (xhr, status, error) {
+              $("#literature-container").html(`
+                            <div class="alert alert-danger">
+                                <h5>Failed to load literature information</h5>
+                                <p>Error: ${error}</p>
+                                <p>Status: ${status}</p>
+                            </div>
+                        `);
+              console.error("Error loading literature:", xhr.responseText);
+            },
+          });
+        }
+      });
+
+      // Add this function to handle Markdown-style formatting
+      function formatChatText(text) {
+        // Process bold text (both ** and markdown style)
+        text = text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+        // Process all types of bullet points
+        const bulletRegex = /^[\s]*[•\-\*]\s+(.*?)$/gm;
+        text = text.replace(bulletRegex, "<li>$1</li>");
+
+        // Wrap bullet point lists in ul tags
+        let lines = text.split("\n");
+        let inList = false;
+        let formattedLines = [];
+
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].trim().startsWith("<li>")) {
+            if (!inList) {
+              formattedLines.push('<ul class="mb-2">');
+              inList = true;
+            }
+            formattedLines.push(lines[i]);
+          } else {
+            if (inList) {
+              formattedLines.push("</ul>");
+              inList = false;
+            }
+            formattedLines.push(lines[i]);
+          }
+        }
+
+        if (inList) {
+          formattedLines.push("</ul>");
+        }
+
+        text = formattedLines.join("\n");
+
+        // Convert newlines to proper HTML
+        text = text.replace(/\n{2,}/g, '</p><p class="mb-3">'); // Multiple newlines become new paragraphs
+        text = text.replace(/\n/g, "<br>"); // Single newlines become line breaks
+
+        // Process headings (lines ending with : that aren't already in HTML tags)
+        text = text.replace(
+          /^([A-Za-z\s]+):\s*(?!<)/gm,
+          "<strong>$1:</strong> "
+        );
+
+        // Highlight important statistics
+        text = text.replace(/(\d+(\.\d+)?%)/g, "<strong>$1</strong>");
+
+        // Wrap everything in paragraphs if not already
+        if (!text.startsWith("<p")) {
+          text = '<p class="mb-3">' + text + "</p>";
+        }
+
+        return text;
+      }
+    </script>
+    <!-- Add Bootstrap JS Bundle - THIS IS NEEDED FOR TABS AND ACCORDIONS TO WORK -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>
